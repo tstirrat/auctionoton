@@ -111,7 +111,7 @@ const HoverTooltip = (): React.ReactPortal | null => {
         for (const node of nodes) {
           if (node.classList.contains('wowhead-tooltip') && 'visible' in node.dataset) {
             // Generate and save a container for the tooltip
-            const container = generateContainer(node, 'hover');
+            const container = generateContainer(node, 'hover')?.tooltip();
 
             if (container) {
               containerEl.current = container;

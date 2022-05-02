@@ -3,7 +3,15 @@ module.exports = {
     './src/modules/**/*.{html,ts,tsx}',
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        wowhead: {
+          gray: {
+            500: '#202020',
+          },
+        },
+      },
+    },
   },
   plugins: [
     require('postcss-import'),

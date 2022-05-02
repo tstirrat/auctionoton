@@ -35,7 +35,7 @@ const PageTooltip = (): React.ReactPortal | null => {
     return null;
   }
 
-  const container = generateContainer(tooltipElement, 'page');
+  const container = generateContainer(tooltipElement, 'page')?.tooltip();
 
   if (!container || !pageItem) {
     return null;

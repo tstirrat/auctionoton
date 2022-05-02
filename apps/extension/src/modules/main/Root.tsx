@@ -8,6 +8,7 @@ import time from 'utils/time';
 import PageTooltip from './PageTooltip';
 import HoverTooltip from './HoverTooltip';
 import { uiState } from './state';
+import CraftingCost from './CraftingCost';
 
 class AppContainer extends React.Component {
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
@@ -40,7 +41,12 @@ const App: React.VFC = () => {
 
   return (
     <>
-      {isItemPage && <PageTooltip />}
+      {isItemPage && (
+        <>
+          <PageTooltip />
+          <CraftingCost />
+        </>
+      )}
       <HoverTooltip />
     </>
   );
