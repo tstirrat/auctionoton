@@ -131,7 +131,9 @@ function useWowheadAmountInput(setCraftAmount: React.Dispatch<React.SetStateActi
       '#icon-list-heading-reagents input',
     );
     if (!amountInputEl) {
-      console.error('Could not find amount input element');
+      if (__DEV__) {
+        console.error('Could not find amount input element');
+      }
       return;
     }
 

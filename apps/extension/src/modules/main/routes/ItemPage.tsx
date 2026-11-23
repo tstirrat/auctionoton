@@ -75,20 +75,20 @@ function useGetReagentItems() {
     }
 
     // Click the tab to load the reagents
-    const createdByTabAnchor = document.querySelector(
-      'a[href="#created-by-spell"',
-    ) as HTMLAnchorElement;
-    if (!createdByTabAnchor) {
+    const createdByTabButton = document.querySelector<HTMLElement>(
+      'button[role="tab"][data-href="#created-by-spell"]',
+    );
+    if (!createdByTabButton) {
       if (__DEV__) {
-        console.error('Could not find "created by" tab anchor');
+        console.error('Could not find "created by" tab button');
       }
       return [];
     }
 
     // Click "created by" to load reagents into DOM and then click back to first tab
-    createdByTabAnchor.click();
+    createdByTabButton.click();
     Promise.resolve().then(() =>
-      createdByTabAnchor.parentNode?.parentNode?.querySelector('li a')?.click(),
+      document.querySelector<HTMLElement>('[role="tablist"] button[role="tab"]')?.click(),
     );
 
     // Super scuffed selector
