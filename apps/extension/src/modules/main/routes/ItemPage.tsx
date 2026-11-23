@@ -4,6 +4,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 
 import useItemFromPage from 'hooks/useItemFromPage';
+import useItemFetcher from 'hooks/useItemFetcher';
 
 import { useCraftableItemPage } from 'hooks/useCraftableItemPage';
 import generateContainer from '../generateContainer';
@@ -23,6 +24,7 @@ export const ItemPage = (): React.ReactPortal | null => {
   const [activeTab, setActiveTab] = React.useState(isAuctionableItem ? 0 : 1);
   const { reagentItems } = useGetReagentItems();
   const { items } = useCraftableItemPage(reagentItems.map((item) => item.id));
+  const craftedItem = useItemFetcher(pageItem && pageItem.id > 0 ? pageItem.id : 0);
 
   if (!tooltipElement) {
     return null;
@@ -50,6 +52,10 @@ export const ItemPage = (): React.ReactPortal | null => {
       {activeTab === 1 && (
         <CraftingCostTooltip
           reagentItems={reagentItems}
+          craftedItem={{
+            data: craftedItem.item,
+            isLoading: craftedItem.isLoading || craftedItem.isFetching,
+          }}
           items={items.map((item) => ({
             data: item.data,
             isLoading: item.isLoading || item.isFetching,

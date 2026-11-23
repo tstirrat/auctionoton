@@ -3,6 +3,8 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 
 import useSpellFromPage from 'hooks/useSpellFromPage';
+import useItemFetcher from 'hooks/useItemFetcher';
+import { ELEMENT_ID } from 'src/constants';
 import { useCraftableItemPage } from 'hooks/useCraftableItemPage';
 import generateContainer from '../generateContainer';
 import { ChangeRealmButton } from '../ChangeRealmButton';
@@ -17,6 +19,8 @@ export const SpellPage: React.FC = (props) => {
   }, [tooltipElement]);
   const { reagentItems } = useGetReagentItems();
   const { items, setCraftAmount } = useCraftableItemPage(reagentItems.map((item) => item.id));
+  const craftedItemId = useCraftedItemId(pageSpell?.id);
+  const craftedItem = useItemFetcher(craftedItemId ?? 0);
   useWowheadAmountInput(setCraftAmount);
 
   if (!container) {
@@ -37,6 +41,11 @@ export const SpellPage: React.FC = (props) => {
 
       <CraftingCostTooltip
         reagentItems={reagentItems}
+        craftedItem={
+          craftedItemId
+            ? { data: craftedItem.item, isLoading: craftedItem.isLoading || craftedItem.isFetching }
+            : undefined
+        }
         items={items.map((item) => ({
           data: item.data,
           isLoading: item.isLoading || item.isFetching,
@@ -123,6 +132,26 @@ function useGetReagentItems() {
   return {
     reagentItems,
   };
+}
+
+/**
+ * The crafted item is the last item link in the spell tooltip (the reagents come first).
+ * Our own injected container is skipped.
+ */
+function useCraftedItemId(spellId: number | undefined) {
+  return React.useMemo(() => {
+    if (!spellId) {
+      return undefined;
+    }
+
+    const anchors = Array.from(
+      document.querySelectorAll<HTMLAnchorElement>(`div#tt${spellId} a[href*="item="]`),
+    ).filter((anchor) => !anchor.closest(`[id^="${ELEMENT_ID.CONTAINER}"]`));
+    const href = anchors[anchors.length - 1]?.getAttribute('href');
+    const match = href?.match(/item=(\d+)/);
+
+    return match ? Number(match[1]) : undefined;
+  }, [spellId]);
 }
 
 function useWowheadAmountInput(setCraftAmount: React.Dispatch<React.SetStateAction<number>>) {

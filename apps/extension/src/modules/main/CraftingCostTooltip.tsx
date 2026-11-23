@@ -5,10 +5,13 @@ import LoadingSvg from 'static/loading.svg';
 import { TooltipBody } from './tooltip/TooltipBody';
 import { Value } from './tooltip/Value';
 import { useWowhead } from 'hooks/useWowhead';
+import { calcCraftingCost, calcProfit, toUnitPrice } from 'utils/crafting';
 
 type Props = {
   items: { data: i.CachedItemDataClassic | undefined; isLoading: boolean }[];
   reagentItems: i.ReagentItem[];
+  /** The item that is crafted, to show its sell value and the profit */
+  craftedItem?: { data: i.CachedItemDataClassic | undefined; isLoading: boolean };
   reagents?: Map<number, number>;
   craftAmount?: number;
 };
@@ -24,20 +27,24 @@ export const CraftingCostTooltip = ({ craftAmount = 1, ...props }: Props) => {
     return props.reagentItems.find((reagentItem) => reagentItem.id === id)?.icon ?? '';
   }
 
-  const total =
+  const { cost: total, missing } = calcCraftingCost(
     props.items
       .filter((item) => item.data?.stats)
-      .reduce((acc, item) => {
-        const reagentAmount = getReagentAmount(item.data!.itemId);
-        const { minBuyout } = item.data!.stats.current;
-        const value = typeof minBuyout !== 'object' ? Number(minBuyout) : minBuyout.raw;
-
-        if (isNaN(value)) {
-          return acc;
-        }
-
-        return acc + value * reagentAmount * craftAmount;
-      }, 0) || 0;
+      .map((item) => ({
+        itemId: item.data!.itemId,
+        // A min buyout of 0 means nothing is listed, so there is no price
+        unitPrice: toUnitPrice(item.data!.stats.current.minBuyout) || undefined,
+      })),
+    props.reagentItems,
+    craftAmount,
+  );
+  const craftedValue = props.craftedItem?.data?.stats?.current.marketValue;
+  const result = calcProfit(
+    craftedValue,
+    total,
+    missing + (props.items.some((item) => !item.data?.stats) ? 1 : 0),
+    craftAmount,
+  );
 
   return (
     <>
@@ -93,11 +100,40 @@ export const CraftingCostTooltip = ({ craftAmount = 1, ...props }: Props) => {
 
           <div className="auc-col-span-3 auc-h-4" />
 
-          <div className="auc-flex auc-items-center auc-font-bold">Total</div>
+          <div className="auc-flex auc-items-center auc-font-bold">Total (min buyout)</div>
           <div />
           <div className="auc-flex auc-justify-end auc-items-center">
             <Value value={total} />
           </div>
+
+          {props.craftedItem && (
+            <>
+              <div className="auc-flex auc-items-center auc-font-bold">Sell value (market)</div>
+              <div />
+              <div className="auc-flex auc-justify-end auc-items-center">
+                {result ? (
+                  <Value value={result.sellValue} />
+                ) : props.craftedItem.isLoading ? (
+                  <LoadingSvg style={{ width: '15px' }} />
+                ) : (
+                  'N/A'
+                )}
+              </div>
+
+              <div className="auc-flex auc-items-center auc-font-bold">Profit</div>
+              <div />
+              <div className="auc-flex auc-justify-end auc-items-center">
+                {result ? (
+                  <span className={`auc-flex auc-gap-1 ${result.profit < 0 ? 'q10' : 'q2'}`}>
+                    {result.profit < 0 && '-'}
+                    <Value value={Math.abs(result.profit)} />
+                  </span>
+                ) : (
+                  'N/A'
+                )}
+              </div>
+            </>
+          )}
         </div>
       </TooltipBody>
     </>
