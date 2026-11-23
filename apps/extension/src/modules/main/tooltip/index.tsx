@@ -9,7 +9,6 @@ import LoadingSvg from 'static/loading.svg';
 // import WarningSvg from 'static/exclamation-circle-regular.svg';
 import { ELEMENT_ID } from 'src/constants';
 import useItemFetcher from 'hooks/useItemFetcher';
-import { useWowhead } from 'hooks/useWowhead';
 import useStorageQuery from 'hooks/useStorageQuery';
 
 import { SellPrice } from './SellPrice';
@@ -17,6 +16,14 @@ import { TooltipBody } from './TooltipBody';
 import { useRealm } from 'hooks/useRealm';
 
 dayjs.extend(relativeTime);
+
+/** Hours after which TSM data is considered stale (realm data updates every few hours, region data daily) */
+const STALE_REALM_HOURS = 6;
+const STALE_REGION_HOURS = 36;
+
+function formatSoldPerDay(value: number) {
+  return value.toLocaleString(undefined, { maximumFractionDigits: value < 10 ? 2 : 0 });
+}
 
 /** @TODO */
 /**
@@ -26,8 +33,7 @@ dayjs.extend(relativeTime);
 
 const Tooltip: React.FC<Props> = (props) => {
   const { data: user } = useStorageQuery('user');
-  const { error, isFetching, isLoading, item, refetch } = useItemFetcher(props.itemId);
-  const { isEra } = useWowhead();
+  const { error, notFound, isFetching, isLoading, item, refetch } = useItemFetcher(props.itemId);
   const { activeRealm } = useRealm();
   const { data: lastUpdated } = useQuery({
     queryKey: ['tooltip', props.itemId, item?.updatedAt],
@@ -61,6 +67,11 @@ const Tooltip: React.FC<Props> = (props) => {
     return null;
   }
 
+  const current = item?.stats?.current;
+  const hasData = !!item?.regional || !!(current?.marketValue || current?.minBuyout);
+  const regionHours = item?.regional?.lastUpdated
+    ? Math.abs(dayjs(item.regional.lastUpdated).diff(dayjs(), 'hour'))
+    : undefined;
   const errorStr = `Error: ${error || 'Something went wrong. Try again later.'}`;
 
   return (
@@ -73,8 +84,8 @@ const Tooltip: React.FC<Props> = (props) => {
               Last updated:&nbsp;
               <span
                 className={cn({
-                  q2: lastUpdated.hours < (isEra ? 24 : 3),
-                  q10: lastUpdated.hours >= (isEra ? 24 : 3),
+                  q2: lastUpdated.hours < STALE_REALM_HOURS,
+                  q10: lastUpdated.hours >= STALE_REALM_HOURS,
                 })}
               >
                 {lastUpdated.text}
@@ -87,8 +98,8 @@ const Tooltip: React.FC<Props> = (props) => {
       {item ? (
         <tr className="auc-block auc-w-full">
           <td className="auc-block auc-w-full">
-            {!item?.stats?.current?.minBuyout ? (
-              'No data is available for this realm.'
+            {!hasData ? (
+              'No TSM data for this item.'
             ) : (
               <>
                 <SellPrice
@@ -106,14 +117,30 @@ const Tooltip: React.FC<Props> = (props) => {
                   amount={props.amount}
                   value={item.stats.current.minBuyout}
                 />
-                {item.stats.current.quantity != null && (
-                  <SellPrice
-                    heading="Quantity"
-                    amount={props.amount}
-                    value={`${item.stats.current.quantity} auction${
-                      item.stats.current.quantity === 1 ? '' : 's'
-                    }`}
-                  />
+                {item.regional && (
+                  <>
+                    <SellPrice
+                      heading="Sale rate (region)"
+                      value={String(item.regional.saleRate)}
+                    />
+                    <SellPrice
+                      heading="Sold/day (region)"
+                      value={formatSoldPerDay(item.regional.soldPerDay)}
+                    />
+                    {regionHours != null && (
+                      <div className="whtt-sellprice auc-mt-1">
+                        Region data updated:&nbsp;
+                        <span
+                          className={cn({
+                            q2: regionHours < STALE_REGION_HOURS,
+                            q10: regionHours >= STALE_REGION_HOURS,
+                          })}
+                        >
+                          {dayjs(item.regional.lastUpdated).fromNow()}
+                        </span>
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             )}
@@ -137,7 +164,14 @@ const Tooltip: React.FC<Props> = (props) => {
           </td>
         </tr>
       ) : null}
-      {error && !item ? (
+      {notFound && !item ? (
+        <tr>
+          <td>
+            <div className="auc-mt-2 auc-flex">No TSM data for this item.</div>
+          </td>
+        </tr>
+      ) : null}
+      {error && !notFound && !item ? (
         <tr>
           <td>
             <div className="auc-mt-2 auc-flex auc-text-red-500">{errorStr}</div>
@@ -156,9 +190,20 @@ const Tooltip: React.FC<Props> = (props) => {
                 ) : null} */}
       <tr>
         <td>
+          <div className="auc-mt-2 auc-text-[10px]">
+            Pricing data from{' '}
+            <a
+              href="https://tradeskillmaster.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="q"
+            >
+              TradeSkillMaster
+            </a>
+          </div>
           {typeof props.children === 'function'
             ? props.children({
-                error: !!error,
+                error: !!error && !notFound,
                 item,
                 loading: isLoading || isFetching,
                 getItem: refetch,

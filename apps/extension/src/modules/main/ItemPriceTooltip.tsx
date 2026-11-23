@@ -1,10 +1,10 @@
-import * as i from 'types';
 import * as React from 'react';
-import useStorageQuery from 'hooks/useStorageQuery';
 
 import ExternalLinkSvg from 'static/external-link.svg';
 import RedoSvg from 'static/redo-solid.svg';
+import { useAuctionHouse } from 'hooks/useAuctionHouse';
 import { useWowhead } from 'hooks/useWowhead';
+import { buildItemUrl } from 'utils/tsmCsv';
 import Tooltip from './tooltip';
 
 type Props = {
@@ -12,17 +12,10 @@ type Props = {
 };
 
 export const ItemPriceTooltip = (props: Props) => {
-  const { isClassic, version } = useWowhead();
-  const { data: user } = useStorageQuery('user');
-
-  function createNexushubLink(item: i.CachedItemDataClassic) {
-    const server = user?.realms?.[version]?.slug;
-
-    if (server) {
-      const faction = user?.faction[server]?.toLowerCase();
-      return `https://nexushub.co/wow-classic/items/${server}-${faction}/${item.uniqueName}`;
-    }
-  }
+  const { version } = useWowhead();
+  const auctionHouse = useAuctionHouse();
+  const tsmUrl =
+    auctionHouse && buildItemUrl(version, auctionHouse.region, auctionHouse.slug, props.itemId);
 
   return (
     <Tooltip itemId={props.itemId}>
@@ -41,14 +34,14 @@ export const ItemPriceTooltip = (props: Props) => {
                 </button>
               </div>
             )}
-            {isClassic && user && item && 'stats' in item && (
+            {tsmUrl && item && 'stats' in item && (
               <a
-                href={createNexushubLink(item as i.CachedItemDataClassic)!}
+                href={tsmUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="q auc-flex auc-place-items-center auc-gap-1"
               >
-                More information on Nexushub.co <ExternalLinkSvg />
+                More information on TradeSkillMaster <ExternalLinkSvg />
               </a>
             )}
           </div>

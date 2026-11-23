@@ -20,6 +20,7 @@ function useItemFetcher(itemId: number, options?: Options): UseItemFetcher {
   const queryClient = useQueryClient();
   const [error, setError] = React.useState('');
   const [warning, setWarning] = React.useState('');
+  const [notFound, setNotFound] = React.useState(false);
   const queryKey: i.ItemQueryKey = [auctionHouse?.key ?? '', itemId];
   const { data, isLoading, isFetching, isError, refetch } = useQuery({
     queryKey: ['item', ...queryKey],
@@ -37,6 +38,7 @@ function useItemFetcher(itemId: number, options?: Options): UseItemFetcher {
 
     setError('');
     setWarning('');
+    setNotFound(false);
 
     // Check browser storage if item is stored
     const itemFromStorage = await asyncStorage.getItem(queryKey);
@@ -58,6 +60,7 @@ function useItemFetcher(itemId: number, options?: Options): UseItemFetcher {
     }
 
     if (result === 'NOT_FOUND') {
+      setNotFound(true);
       setError('Item not found! This item might not be available on this realm.');
       throw new Error('Item not found. This item might not be available on this realm.');
     }
@@ -71,6 +74,7 @@ function useItemFetcher(itemId: number, options?: Options): UseItemFetcher {
     isFetching,
     isError,
     error,
+    notFound,
     warning,
     refetch,
   };
@@ -82,6 +86,8 @@ interface UseItemFetcher {
   isFetching: boolean;
   isError: boolean;
   error: string;
+  /** Item is in neither TSM CSV */
+  notFound: boolean;
   warning: string;
   refetch: i.ItemRefetchFn;
 }
