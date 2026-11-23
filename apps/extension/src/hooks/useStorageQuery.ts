@@ -4,7 +4,7 @@ import { useQuery, useQueryClient, UseQueryResult } from '@tanstack/react-query'
 
 import asyncStorage from 'utils/asyncStorage';
 
-function useStorageQuery<K extends i.StorageKeys>(key: K): UseQueryResult<i.BrowserStorage[K]> {
+function useStorageQuery<K extends i.StorageKeys>(key: K): UseQueryResult<i.BrowserStorage[K] | undefined> {
   const queryClient = useQueryClient();
   const query = useQuery({
     queryKey: ['storage', key],

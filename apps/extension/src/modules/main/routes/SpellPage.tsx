@@ -37,8 +37,10 @@ export const SpellPage: React.FC = (props) => {
 
       <CraftingCostTooltip
         reagentItems={reagentItems}
-        items={items.data}
-        isLoading={items.isLoading}
+        items={items.map((item) => ({
+          data: item.data,
+          isLoading: item.isLoading || item.isFetching,
+        }))}
       />
 
       <div className="auc-h-1" />
