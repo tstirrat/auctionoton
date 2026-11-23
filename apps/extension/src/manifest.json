@@ -67,14 +67,10 @@
     "128": "static/icon-128.png"
   },
   "permissions": [
-    "storage",
-    "https://*.ngrok.io/*",
-    "https://5d9b-82-168-31-31.ngrok.io/*",
-    "https://auctionoton-edge-api-sandervspl.vercel.app/api/*",
-    "https://auctionoton-edge-api.vercel.app/api/*",
-    "https://auctionoton-api-valor.vercel.app/api/*",
-    "https://auctionoton-api.vercel.app/api/*",
-    "https://auctionoton-api.sandervspl.dev/*"
+    "storage"
+  ],
+  "host_permissions": [
+    "https://public-data.tradeskillmaster.com/*"
   ],
   "browser_specific_settings": {
     "gecko": {

@@ -22,8 +22,17 @@ export type PriceSnapshotV2 = {
   marketValue: number;
   historicalValue: number;
   minBuyout: PriceObjectV2 | number;
-  numAuctions: number;
-  quantity: number;
+  numAuctions?: number;
+  quantity?: number;
+};
+
+export type RegionalStats = {
+  marketValue: number;
+  historical: number;
+  avgSalePrice: number;
+  saleRate: number;
+  soldPerDay: number;
+  lastUpdated: Date_ISO_8601;
 };
 
 export type ItemResponseV2 = Omit<NexusHub.ItemsResponse, 'stats'> & {
@@ -32,6 +41,7 @@ export type ItemResponseV2 = Omit<NexusHub.ItemsResponse, 'stats'> & {
   stats: {
     lastUpdated: Date_ISO_8601;
     current: PriceSnapshotV2;
-    previous: PriceSnapshotV2;
+    previous?: PriceSnapshotV2;
   };
+  regional?: RegionalStats;
 };

@@ -15,23 +15,23 @@ type Options = Omit<
 >;
 
 function useItemFetcher(itemId: number, options?: Options): UseItemFetcher {
-  const auctionHouseId = useAuctionHouse();
+  const auctionHouse = useAuctionHouse();
   const { version } = useWowhead();
   const queryClient = useQueryClient();
   const [error, setError] = React.useState('');
   const [warning, setWarning] = React.useState('');
-  const queryKey: i.ItemQueryKey = [auctionHouseId!, itemId];
+  const queryKey: i.ItemQueryKey = [auctionHouse?.key ?? '', itemId];
   const { data, isLoading, isFetching, isError, refetch } = useQuery({
     queryKey: ['item', ...queryKey],
     queryFn: fetchItem,
     refetchOnWindowFocus: true,
     retry: false, // Let user retry on demand with button
-    enabled: !!auctionHouseId && !!itemId,
+    enabled: !!auctionHouse && !!itemId,
     ...options,
   });
 
   async function fetchItem() {
-    if (auctionHouseId == null || auctionHouseId <= 0) {
+    if (!auctionHouse) {
       return;
     }
 
@@ -50,7 +50,7 @@ function useItemFetcher(itemId: number, options?: Options): UseItemFetcher {
       }
     }
 
-    const result = await fetchItemFromAPI(itemId, auctionHouseId!, version);
+    const result = await fetchItemFromAPI(itemId, auctionHouse, version);
 
     if (result == null) {
       setError('Something went wrong fetching this item. Please try again.');

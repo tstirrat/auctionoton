@@ -1,8 +1,16 @@
 import useStorageQuery from './useStorageQuery';
 
-export function useAuctionHouse() {
-  const { data: user } = useStorageQuery('user');
-  const auctionHouseId = user?.version ? user.realms?.[user.version]?.auctionHouseId : undefined;
+export type AuctionHouse = {
+  region: string;
+  slug: string;
+  /** Stable key for caching, e.g. "us:normal-alliance" */
+  key: string;
+};
 
-  return auctionHouseId;
+export function useAuctionHouse(): AuctionHouse | undefined {
+  const { data: user } = useStorageQuery('user');
+  const region = user?.region;
+  const slug = user?.version ? user.realms?.[user.version]?.slug : undefined;
+
+  return region && slug ? { region, slug, key: `${region}:${slug}` } : undefined;
 }

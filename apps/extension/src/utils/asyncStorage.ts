@@ -42,8 +42,8 @@ class AsyncStorage {
   };
 
   getKeyFromQueryKey = (itemQueryKey: i.ItemQueryKey) => {
-    const [auctionHouseId, itemId] = itemQueryKey;
-    return `${auctionHouseId}:${itemId}`;
+    const [auctionHouseKey, itemId] = itemQueryKey;
+    return `${auctionHouseKey}:${itemId}`;
   };
 
   addItem = async (itemQueryKey: i.ItemQueryKey, data: i.CachedItemDataClassic): Promise<void> => {

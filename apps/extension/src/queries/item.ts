@@ -2,43 +2,44 @@ import * as i from 'types';
 import dayjs from 'dayjs';
 
 import asyncStorage from 'utils/asyncStorage';
-import { auctionotonAPIUrl, auctionotonAPI } from 'utils/auctionotonApi';
+import type { AuctionHouse } from 'hooks/useAuctionHouse';
+import type { GetItemsMessage, GetItemsResponse } from 'utils/messages';
 
 export async function fetchItemFromAPI(
   itemId: number,
-  auctionHouseId: number,
+  auctionHouse: AuctionHouse,
   version: i.GameVersion,
-  amount = 1,
 ) {
   try {
-    if (!auctionHouseId) {
-      if (__DEV__) {
-        throw new Error(
-          `Invalid auction house id provided ("${auctionHouseId}") for item "${itemId}"`,
-        );
-      }
+    const message: GetItemsMessage = {
+      type: 'getItems',
+      version,
+      region: auctionHouse.region,
+      slug: auctionHouse.slug,
+      itemIds: [itemId],
+    };
+    const response: GetItemsResponse | undefined = await addon.runtime.sendMessage(message);
 
-      return;
+    if (!response || 'error' in response) {
+      throw new Error(response?.error ?? 'No response from background');
     }
 
-    const { data, status } = await auctionotonAPI.get<i.ItemDataClassicResponse>(
-      `${auctionotonAPIUrl}/item/${itemId}/ah/${auctionHouseId}/${version}`,
-    );
+    const item = response.items[itemId];
+
+    if (!item) {
+      return 'NOT_FOUND';
+    }
 
     const localData: i.CachedItemDataClassic = {
-      ...data,
+      ...item,
       updatedAt: dayjs().toISOString(),
     };
 
     // Store in browser storage
-    await asyncStorage.addItem([auctionHouseId, itemId], localData);
+    await asyncStorage.addItem([auctionHouse.key, itemId], localData);
 
     return localData;
-  } catch (err: any) {
-    console.error('fetchItemFromAPI', err.response?.status, err);
-
-    if (err.response?.status === 404) {
-      return 'NOT_FOUND';
-    }
+  } catch (err) {
+    console.error('fetchItemFromAPI', err);
   }
 }
