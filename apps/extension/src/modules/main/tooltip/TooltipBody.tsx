@@ -21,7 +21,7 @@ export const TooltipBody: React.FC<Props> = (props) => {
     }
 
     const _version = version === 'seasonal' ? 'era' : 'classic'; // Used to be 'era' so for backwards compatibility we change it from 'seasonal' to 'era'
-    const activeVersion = user.isActive?.[_version] || version;
+    const activeVersion = version === 'forever' ? 'forever' : user.isActive?.[_version] || version;
     const serverName = user.realms?.[activeVersion];
     const region = user.region?.toUpperCase();
 

@@ -14,7 +14,9 @@
         "https://wowhead.com/cata/*",
         "https://www.wowhead.com/cata/*",
         "https://wowhead.com/classic/*",
-        "https://www.wowhead.com/classic/*"
+        "https://www.wowhead.com/classic/*",
+        "https://wowhead.com/forever/*",
+        "https://www.wowhead.com/forever/*"
       ],
       "js": [
         "index.js"
@@ -30,7 +32,9 @@
         "https://wowhead.com/cata/*",
         "https://www.wowhead.com/cata/*",
         "https://wowhead.com/classic/*",
-        "https://www.wowhead.com/classic/*"
+        "https://www.wowhead.com/classic/*",
+        "https://wowhead.com/forever/*",
+        "https://www.wowhead.com/forever/*"
       ],
       "css": [
         "style.css"

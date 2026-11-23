@@ -52,8 +52,11 @@ export type UserData = {
       i.GameVersion,
       {
         name: string;
+        /** Auction house slug used by TSM, e.g. "normal-alliance" */
         slug: string;
-        auctionHouseId: number;
+        region?: i.Regions;
+        /** @deprecated only used by the old Auctionoton API */
+        auctionHouseId?: number;
       }
     >
   >;

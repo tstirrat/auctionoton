@@ -5,7 +5,7 @@ function useUser() {
   const { data: user } = useStorageQuery('user');
   const { version } = useWowhead();
   const _version = version === 'seasonal' ? 'era' : 'classic'; // Used to be 'era' so for backwards compatibility we change it from 'seasonal' to 'era'
-  const activeVersion = user?.isActive?.[_version] || version;
+  const activeVersion = version === 'forever' ? 'forever' : user?.isActive?.[_version] || version;
 
   // Transfer .server to .realms for backwards compatibility
   if (user?.server) {

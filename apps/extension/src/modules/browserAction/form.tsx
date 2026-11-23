@@ -14,7 +14,6 @@ import {
   Select,
 } from 'src/components/ui/select';
 import { Button } from 'src/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from 'src/components/ui/tabs';
 import useRealmsList from 'hooks/useRealmsList';
 import useStorageQuery from 'hooks/useStorageQuery';
 import asyncStorage from 'utils/asyncStorage';
@@ -26,16 +25,21 @@ import {
   FormLabel,
   FormMessage,
 } from 'src/components/ui/form';
-import slugify from 'slugify';
-import { Skeleton } from 'src/components/ui/skeleton';
-import { useAuctionHouse } from 'hooks/useAuctionHouse';
+import {
+  DEFAULT_FOREVER_FACTION,
+  DEFAULT_FOREVER_REGION,
+  DEFAULT_FOREVER_RULESET,
+  buildAuctionHouseSlug,
+  parseAuctionHouseSlug,
+} from 'utils/realms';
 
 interface FormInput {
   region: i.Regions;
-  realm: string;
+  ruleset: string;
   faction: i.Factions;
-  version: i.GameVersion;
 }
+
+const VERSION: i.GameVersion = 'forever';
 
 // Create a client
 const queryClient = new QueryClient();
@@ -46,68 +50,38 @@ export const RealmForm: React.FC = () => {
   const form = useForm<FormInput>({
     mode: 'onSubmit',
     defaultValues: {
-      version: 'classic',
+      region: DEFAULT_FOREVER_REGION,
+      ruleset: DEFAULT_FOREVER_RULESET,
+      faction: capitalize(DEFAULT_FOREVER_FACTION),
     },
   });
   const watchRegion = form.watch('region');
-  const watchVersion = form.watch('version');
-  const watchRealm = form.watch('realm');
-  const realms = useRealmsList(watchRegion, watchVersion);
-  const auctionHouseId = useAuctionHouse();
-  const [versionTab, setVersionTab] = React.useState<'classic' | 'era'>('classic');
+  const rulesets = useRealmsList(watchRegion, VERSION);
 
+  // Load saved realm into the form
   React.useEffect(() => {
-    if (form.formState.isDirty) {
+    if (form.formState.isDirty || !user) {
       return;
     }
 
-    if (!user) {
-      return;
-    }
+    const storedRealm = user.realms?.[VERSION];
+    const parsed = storedRealm ? parseAuctionHouseSlug(storedRealm.slug) : null;
 
-    if (user.version && auctionHouseId) {
-      const realm = user.realms?.classic?.name;
-
+    if (storedRealm && parsed) {
       form.reset({
-        region: user.region,
-        realm: realm || '',
-        faction: realm ? user.faction[realm] : undefined,
-        version: 'classic',
+        region: storedRealm.region ?? user.region ?? DEFAULT_FOREVER_REGION,
+        ruleset: parsed.ruleset,
+        faction: capitalize(parsed.faction),
       });
     }
   }, [user]);
 
+  // Pick a valid ruleset when the region changes (e.g. no roleplay rulesets in TW/KR)
   React.useEffect(() => {
-    if (!realms.data) {
-      return;
+    if (!rulesets.some((realm) => realm.ruleset === form.getValues('ruleset'))) {
+      form.setValue('ruleset', rulesets[0]?.ruleset ?? DEFAULT_FOREVER_RULESET);
     }
-
-    const storedRealm = watchVersion ? user?.realms?.[watchVersion] : null;
-    const firstRealmInlist = realms.data[0];
-
-    if (storedRealm?.auctionHouseId && storedRealm.auctionHouseId > 0) {
-      form.setValue('realm', storedRealm.name);
-    } else if (firstRealmInlist) {
-      form.setValue('realm', firstRealmInlist.name);
-    }
-  }, [user, realms.data, watchRegion, watchVersion]);
-
-  React.useEffect(() => {
-    if (!watchRealm) {
-      return;
-    }
-
-    const faction = user?.faction[watchRealm];
-    form.setValue('faction', faction || 'Alliance');
-  }, [watchRealm]);
-
-  React.useEffect(() => {
-    if (versionTab === 'classic') {
-      form.setValue('version', 'classic');
-    } else {
-      form.setValue('version', 'seasonal');
-    }
-  }, [versionTab]);
+  }, [watchRegion]);
 
   const onSubmit: SubmitHandler<FormInput> = async (data, e) => {
     e?.preventDefault();
@@ -115,31 +89,27 @@ export const RealmForm: React.FC = () => {
   };
 
   function userMutateFn(data: FormInput) {
-    if (!realms.data) {
-      throw Error('No realms found');
+    const realm = rulesets.find((realm) => realm.ruleset === data.ruleset);
+
+    if (!realm) {
+      throw Error('Invalid ruleset');
     }
 
     return asyncStorage.set('user', (draft) => {
-      const realm = realms.data.find((realm) => realm.name === data.realm);
-
       draft.region = data.region;
-      draft.version = data.version;
+      draft.version = VERSION;
       draft.realms ||= {};
-      draft.realms[data.version] = {
-        name: realm?.name || '',
-        // localizedName: realm?.localizedName,
-        slug: slugify(realm?.name || ''),
-        auctionHouseId:
-          realm?.auctionHouses.find((ah) => ah.type === data.faction)?.auctionHouseId || -1,
+      draft.realms[VERSION] = {
+        name: realm.name,
+        slug: buildAuctionHouseSlug(
+          data.ruleset,
+          data.faction.toLowerCase() as 'horde' | 'alliance',
+        ),
+        region: data.region,
       };
-      draft.isActive = {
-        classic: 'classic',
-        era: data.version,
-      };
-
       draft.faction = {
         ...user?.faction,
-        [data.realm]: data.faction,
+        [realm.name]: data.faction,
       };
     });
   }
@@ -155,57 +125,10 @@ export const RealmForm: React.FC = () => {
           <img alt="Logo" src="static/icon-48.png" className="auc-block md:auc-hidden" />
           <h1 className="auc-text-lg md:auc-text-3xl auc-font-bold">Auctionoton</h1>
           <p className="auc-text-zinc-500 dark:auc-text-zinc-400 auc-hidden md:auc-block">
-            Select your realm to see auction house prices on Wowhead
+            Select your WoW Forever auction house to see prices on Wowhead
           </p>
         </div>
         <div className="auc-space-y-6 auc-w-full">
-          <Tabs
-            defaultValue="classic"
-            className="auc-w-full"
-            value={versionTab}
-            onValueChange={(value) => setVersionTab(value as 'classic' | 'era')}
-          >
-            <TabsList className="auc-w-full">
-              <TabsTrigger value="classic" className="auc-w-full">
-                Classic
-              </TabsTrigger>
-              <TabsTrigger value="era" className="auc-w-full">
-                Era
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-
-          <div>
-            <FormField
-              control={form.control}
-              name="version"
-              render={({ field }) => (
-                <FormItem className="auc-space-y-1">
-                  <FormLabel>Game Version</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
-                    disabled={versionTab === 'classic'}
-                  >
-                    <FormControl>
-                      <SelectTrigger id="version">
-                        <SelectValue placeholder="Select game version" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent position="item-aligned">
-                      {versionTab === 'classic' && (
-                        <SelectItem value="classic">Cataclysm</SelectItem>
-                      )}
-                      <SelectItem value="era">Era</SelectItem>
-                      <SelectItem value="hardcore">Hardcore</SelectItem>
-                      <SelectItem value="seasonal">Season of Discovery</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
           <div>
             <FormField
               control={form.control}
@@ -224,8 +147,10 @@ export const RealmForm: React.FC = () => {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent position="item-aligned">
-                      <SelectItem value="eu">Europe</SelectItem>
                       <SelectItem value="us">North America</SelectItem>
+                      <SelectItem value="eu">Europe</SelectItem>
+                      <SelectItem value="tw">Taiwan</SelectItem>
+                      <SelectItem value="kr">Korea</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -236,32 +161,28 @@ export const RealmForm: React.FC = () => {
           <div>
             <FormField
               control={form.control}
-              name="realm"
+              name="ruleset"
               render={({ field }) => (
                 <FormItem className="auc-space-y-1">
-                  <FormLabel>Realm</FormLabel>
-                  {realms.isLoading ? (
-                    <Skeleton className="auc-h-[40px]" />
-                  ) : (
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger id="realm">
-                          <SelectValue placeholder="Select realm" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent position="item-aligned">
-                        {realms.data?.map((realm) => (
-                          <SelectItem key={realm.localizedName} value={realm.name}>
-                            {realm.localizedName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
+                  <FormLabel>Ruleset</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger id="ruleset">
+                        <SelectValue placeholder="Select ruleset" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent position="item-aligned">
+                      {rulesets.map((realm) => (
+                        <SelectItem key={realm.ruleset} value={realm.ruleset}>
+                          {realm.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -274,25 +195,21 @@ export const RealmForm: React.FC = () => {
               render={({ field }) => (
                 <FormItem className="auc-space-y-1">
                   <FormLabel>Faction</FormLabel>
-                  {realms.isLoading ? (
-                    <Skeleton className="auc-h-[40px]" />
-                  ) : (
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger id="faction">
-                          <SelectValue placeholder="Select faction" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent position="item-aligned">
-                        <SelectItem value="Alliance">Alliance</SelectItem>
-                        <SelectItem value="Horde">Horde</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger id="faction">
+                        <SelectValue placeholder="Select faction" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent position="item-aligned">
+                      <SelectItem value="Alliance">Alliance</SelectItem>
+                      <SelectItem value="Horde">Horde</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -309,6 +226,10 @@ export const RealmForm: React.FC = () => {
     </Form>
   );
 };
+
+function capitalize(faction: string): i.Factions {
+  return (faction.charAt(0).toUpperCase() + faction.slice(1)) as i.Factions;
+}
 
 const root = document.getElementById('root');
 

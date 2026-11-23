@@ -1,29 +1,14 @@
 import * as i from 'types';
-import { useQuery } from '@tanstack/react-query';
 
-type Realm = {
-  name: string;
-  localizedName: string;
-  realmId: number;
-  auctionHouses: {
-    auctionHouseId: number;
-    type: 'Alliance' | 'Horde';
-    lastModified: number;
-  }[];
-};
+import { FOREVER_REALMS, ForeverRealm } from 'utils/realms';
 
-function useRealmsList(region: i.Regions, version: i.GameVersion) {
-  const realms = useQuery<Realm[], Error>({
-    queryKey: ['realms', region, version],
-    // The Auctionoton backend that served the realm list is gone and TSM's CSV data needs no realm
-    // lookup, so there is nothing to fetch here. Realms are hardcoded where they are supported.
-    queryFn: async (): Promise<Realm[]> => [],
-    enabled: !!region,
-    gcTime: Infinity,
-    staleTime: Infinity,
-  });
+/** Rulesets available in a region. The old backend that served realm lists is gone. */
+function useRealmsList(region: i.Regions | undefined, version: i.GameVersion): ForeverRealm[] {
+  if (version !== 'forever' || !region) {
+    return [];
+  }
 
-  return realms;
+  return FOREVER_REALMS[region] ?? [];
 }
 
 export default useRealmsList;
